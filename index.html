@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dialysis App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; }
+        
+        /* App Header */
+        .app-header { background: var(--primary); color: white; padding: 40px 20px 20px; text-align: left; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .app-header h1 { margin: 0; font-size: 28px; }
+        
+        /* Form Card */
+        .card { background: var(--card); margin: -20px 15px 20px; padding: 20px; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-label { font-weight: 600; color: #8e8e93; font-size: 12px; text-transform: uppercase; margin: 15px 0 8px; display: block; }
+        
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; background: #fafafa; box-sizing: border-box; }
+        
+        /* Buttons */
+        .btn-main { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,122,255,0.3); }
+        .btn-pdf { background: #34c759; margin-top: 15px; }
+
+        /* History List */
+        .history-list { margin: 20px 15px; }
+        .history-item { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary); }
+        .history-date { font-weight: bold; font-size: 14px; }
+        .history-stats { font-size: 12px; color: #666; text-align: right; }
+
+        /* Navigation Bar */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #d1d1d6; display: flex; justify-content: space-around; padding: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">
+        <h1>Health Log</h1>
+        <p>Dialysis Daily Tracking</p>
+    </div>
+
+    <div class="card">
+        <span class="section-label">Basic Info</span>
+        <input type="date" id="entryDate">
+
+        <span class="section-label">Pre-Dialysis</span>
+        <input type="number" id="wBefore" placeholder="Weight Before (kg)" step="0.1">
+        <input type="text" id="bpBefore" placeholder="BP Before (e.g. 130/80)">
+
+        <span class="section-label">Post-Dialysis</span>
+        <input type="number" id="wAfter" placeholder="Weight After (kg)" step="0.1">
+        <input type="text" id="bpAfter" placeholder="BP After (e.g. 110/70)">
+
+        <button class="btn-main" onclick="saveData()">Save Entry</button>
+        <button class="btn-main btn-pdf" onclick="generatePDF()">Download Monthly PDF</button>
+    </div>
+
+    <div class="history-list" id="historyList">
+        <h3 style="margin-left: 5px;">Recent History</h3>
+        </div>
+
+    <script>
+        document.getElementById('entryDate').valueAsDate = new Date();
+        loadHistory();
+
+        function saveData() {
+            const data = {
+                date: document.getElementById('entryDate').value,
+                wb: document.getElementById('wBefore').value || '-',
+                bpb: document.getElementById('bpBefore').value || '-',
+                wa: document.getElementById('wAfter').value || '-',
+                bpa: document.getElementById('bpAfter').value || '-'
+            };
+
+            let logs = JSON.parse(localStorage.getItem('dialysis_logs')) || [];
+            logs.unshift(data); // Newest on top
+            localStorage.setItem('dialysis_logs', JSON.stringify(logs));
+            
+            alert("Entry Saved Successfully!");
+            location.reload(); 
+        }
+
+        function loadHistory() {
+            const logs = JSON.parse(localStorage.getItem('dialysis_logs')) || [];
+            const list = document.getElementById('historyList');
+            logs.slice(0, 5).forEach(log => {
+                list.innerHTML += `
+                    <div class="history-item">
+                        <div class="history-date">${log.date}</div>
+                        <div class="history-stats">
+                            Pre: ${log.wb}kg | ${log.bpb}<br>
+                            Post: ${log.wa}kg | ${log.bpa}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const logs = JSON.parse(localStorage.getItem('dialysis_logs')) || [];
+            
+            doc.text("Monthly Dialysis Report", 14, 15);
+            const tableData = logs.map(l => [l.date, l.wb, l.bpb, l.wa, l.bpa]);
+            
+            doc.autoTable({
+                head: [['Date', 'W-Pre', 'BP-Pre', 'W-Post', 'BP-Post']],
+                body: tableData,
+                startY: 25
+            });
+            doc.save("Dialysis_Report.pdf");
+        }
+    </script>
+</body>
+</html>
